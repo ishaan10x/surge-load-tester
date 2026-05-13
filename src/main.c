@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -94,7 +95,13 @@ void reset_connection(ThreadContext *ctx, Connection *conn) {
     epoll_ctl(ctx->epoll_fd, EPOLL_CTL_ADD, conn->fd, &ev);
 }
 
-#include <signal.h>
+void maximize_fd_limit() {
+    struct rlimit rl;
+    if (getrlimit(RLIMIT_NOFILE, &rl) == 0) {
+        rl.rlim_cur = rl.rlim_max;
+        setrlimit(RLIMIT_NOFILE, &rl);
+    }
+}
 
 void handle_sigint(int sig) {
     (void)sig;
@@ -271,6 +278,7 @@ void print_report(int total_reqs, double total_duration) {
 }
 
 int main(int argc, char *argv[]) {
+    maximize_fd_limit();
     signal(SIGINT, handle_sigint);
     char *host = NULL;
     char *port = "80";
